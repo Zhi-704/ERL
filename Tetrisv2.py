@@ -1,6 +1,9 @@
 import numpy as np
 import random
 import gym
+import cv2
+from PIL import Image
+from time import sleep
 from gym import spaces
 import pygame
 
@@ -15,13 +18,19 @@ Tetriminos = {
 }
 Tetriminos_name = ['I', 'L', 'J', 'T', 'O', 'S', 'Z']
 
+colours = {
+    0: (255, 255, 255),
+    1: (247, 64, 99),
+    2: (0, 167, 247),
+}
+
 class TetrisEnv:
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode = None, width, height):
         self.width = width
         self.height = height
-        self.board = np.zeros(shape=(width, height), dtype = int) # The size of tetris board
+        self.board = [[0] * self.width for _ in range(self.height)] # The size of tetris board
         self.window_size = 512  # The size of the PyGame window
         
         # We have 5 actions, corresponding to "left rotate", "right rotate", "move left", "move right", "drop"
@@ -97,6 +106,11 @@ class TetrisEnv:
 
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
+
+        self.board = [[0] * self.width for _ in range(self.height)]
+        self.score = 0
+        self.tetrominoes = 0
+        self.cleared_lines = 0
 
         # Choose random tetrinimos at random
         self.starting_piece = self.np_random.integers(0, 5, dtype=int)
