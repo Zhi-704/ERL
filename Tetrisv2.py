@@ -8,76 +8,68 @@ import cv2
 from PIL import Image
 from time import sleep
 
-TETRIMINOS = {
-    0: { # I
-        0: [(0,0), (1,0), (2,0), (3,0)],
-        90: [(1,0), (1,1), (1,2), (1,3)],
-        180: [(3,0), (2,0), (1,0), (0,0)],
-        270: [(1,3), (1,2), (1,1), (1,0)],
-    },
-    1: { # T
-        0: [(1,0), (0,1), (1,1), (2,1)],
-        90: [(0,1), (1,2), (1,1), (1,0)],
-        180: [(1,2), (2,1), (1,1), (0,1)],
-        270: [(2,1), (1,0), (1,1), (1,2)],
-    },
-    2: { # L
-        0: [(1,0), (1,1), (1,2), (2,2)],
-        90: [(0,1), (1,1), (2,1), (2,0)],
-        180: [(1,2), (1,1), (1,0), (0,0)],
-        270: [(2,1), (1,1), (0,1), (0,2)],
-    },
-    3: { # J
-        0: [(1,0), (1,1), (1,2), (0,2)],
-        90: [(0,1), (1,1), (2,1), (2,2)],
-        180: [(1,2), (1,1), (1,0), (2,0)],
-        270: [(2,1), (1,1), (0,1), (0,0)],
-    },
-    4: { # Z
-        0: [(0,0), (1,0), (1,1), (2,1)],
-        90: [(0,2), (0,1), (1,1), (1,0)],
-        180: [(2,1), (1,1), (1,0), (0,0)],
-        270: [(1,0), (1,1), (0,1), (0,2)],
-    },
-    5: { # S
-        0: [(2,0), (1,0), (1,1), (0,1)],
-        90: [(0,0), (0,1), (1,1), (1,2)],
-        180: [(0,1), (1,1), (1,0), (2,0)],
-        270: [(1,2), (1,1), (0,1), (0,0)],
-    },
-    6: { # O
-        0: [(1,0), (2,0), (1,1), (2,1)],
-        90: [(1,0), (2,0), (1,1), (2,1)],
-        180: [(1,0), (2,0), (1,1), (2,1)],
-        270: [(1,0), (2,0), (1,1), (2,1)],
-    }
-}
-
-COLOURS = {
-    0: (255, 255, 255),
-    1: (247, 64, 99),
-    2: (0, 167, 247),
-}
-
 class TetrisEnv:
+
+    # BOARD
+    MAP_EMPTY = 0
+    EXISTING_BLOCK = 1
+    MAP_PLAYER = 2
+
+    TETRIMINOS = {
+        0: { # I
+            0: [(0,0), (1,0), (2,0), (3,0)],
+            90: [(1,0), (1,1), (1,2), (1,3)],
+            180: [(3,0), (2,0), (1,0), (0,0)],
+            270: [(1,3), (1,2), (1,1), (1,0)],
+        },
+        1: { # T
+            0: [(1,0), (0,1), (1,1), (2,1)],
+            90: [(0,1), (1,2), (1,1), (1,0)],
+            180: [(1,2), (2,1), (1,1), (0,1)],
+            270: [(2,1), (1,0), (1,1), (1,2)],
+        },
+        2: { # L
+            0: [(1,0), (1,1), (1,2), (2,2)],
+            90: [(0,1), (1,1), (2,1), (2,0)],
+            180: [(1,2), (1,1), (1,0), (0,0)],
+            270: [(2,1), (1,1), (0,1), (0,2)],
+        },
+        3: { # J
+            0: [(1,0), (1,1), (1,2), (0,2)],
+            90: [(0,1), (1,1), (2,1), (2,2)],
+            180: [(1,2), (1,1), (1,0), (2,0)],
+            270: [(2,1), (1,1), (0,1), (0,0)],
+        },
+        4: { # Z
+            0: [(0,0), (1,0), (1,1), (2,1)],
+            90: [(0,2), (0,1), (1,1), (1,0)],
+            180: [(2,1), (1,1), (1,0), (0,0)],
+            270: [(1,0), (1,1), (0,1), (0,2)],
+        },
+        5: { # S
+            0: [(2,0), (1,0), (1,1), (0,1)],
+            90: [(0,0), (0,1), (1,1), (1,2)],
+            180: [(0,1), (1,1), (1,0), (2,0)],
+            270: [(1,2), (1,1), (0,1), (0,0)],
+        },
+        6: { # O
+            0: [(1,0), (2,0), (1,1), (2,1)],
+            90: [(1,0), (2,0), (1,1), (2,1)],
+            180: [(1,0), (2,0), (1,1), (2,1)],
+            270: [(1,0), (2,0), (1,1), (2,1)],
+        }
+    }
+
+    COLOURS = {
+        0: (255, 255, 255),
+        1: (247, 64, 99),
+        2: (0, 167, 247),
+    }
 
     def __init__(self, width, height):
         self.WIDTH = width
         self.HEIGHT = height
         self.reset()
-        
-        # We have 5 actions, corresponding to "left rotate", "right rotate", "move left", "move right", "drop"
-        """
-        The following dictionary maps abstract actions from `self.action_space` to 
-        the direction we will walk in if that action is taken.
-        I.e. 0 corresponds to "right", 1 to "up" etc.
-        """
-        self._action_to_direction = {
-            0: np.array([1, 0]),
-            1: np.array([0, 1]),
-            2: np.array([-1, 0]),
-            3: np.array([0, -1]),
-        }
 
     def get_midpoint_integer(self,num):
         midpoint = num // 2
@@ -88,7 +80,7 @@ class TetrisEnv:
 
     def reset(self):
         """
-        Assume step method will not be called before reset has benncalled.
+        Assume step method will not be called before reset has been called.
         Reset called whenever a done signal is issued
         For Tetris, randomly choose tetriminos but the starting placement is always the same.
         Method shuld return a tuple of initial obsercation and some auziliary information.
@@ -106,26 +98,33 @@ class TetrisEnv:
         # self.next_piece = self.bag.pop()
 
         # Choose random tetrinimos at random
-        self.next_piece = random.choice(len(TETRIMINOS))
+        self.next_piece = random.choice(list(TetrisEnv.TETRIMINOS))
 
-        # Current piece starts at the center of the top line
-        midpoint = self.get_midpoint_integer(self.WIDTH)
-        self.current_pos = self.board[0][midpoint]
+        self._new_round()
+
+        # QUESTION: Not really needed in this implementation
+        return self._get_board_props(self.board)
 
 
     def _new_round(self):
         '''Starts a new round (new piece)'''
 
+        # Prior implementation
+        # self.current_pos = [3, 0]
+
         self.current_piece = self.next_piece
-        self.current_pos = [3, 0]
+        # Current piece starts at the center of the top line
+        midpoint = self.get_midpoint_integer(self.WIDTH)
+        self.current_pos = self.board[0][midpoint]
         self.current_rotation = 0
 
+        # QUESTION: Why doesn't it end early if it hits an existing block?
         if self._check_collision(self._get_rotated_piece(), self.current_pos):
             self.game_over = True
 
     def _get_rotated_piece(self):
         '''Returns the current piece, including rotation'''
-        return Tetris.TETROMINOS[self.current_piece][self.current_rotation]
+        return TetrisEnv.TETRIMINOS[self.current_piece][self.current_rotation]
 
 
     def _get_complete_board(self):
@@ -134,7 +133,7 @@ class TetrisEnv:
         piece = [np.add(x, self.current_pos) for x in piece]
         board = [x[:] for x in self.board]
         for x, y in piece:
-            board[y][x] = Tetris.MAP_PLAYER
+            board[y][x] = TetrisEnv.MAP_PLAYER
         return board
 
 
@@ -147,13 +146,21 @@ class TetrisEnv:
         return self.score
 
     def _check_collision(self, piece, pos):
-        '''Check if there is a collision between the current piece and the board'''
+        '''
+        Check if there is a collision between the current piece and the board
+        Iterates over each coordinate in piece
+        Aligns the piece coordinates with board
+        Checks if piece is within the width
+        Checks if piece is within height
+        Checks if piece is colliding with an existing block
+        If true on any, will return true, and will return false for no collision
+        '''
         for x, y in piece:
             x += pos[0]
             y += pos[1]
-            if x < 0 or x >= Tetris.BOARD_WIDTH \
-                    or y < 0 or y >= Tetris.BOARD_HEIGHT \
-                    or self.board[y][x] == Tetris.MAP_BLOCK:
+            if x < 0 or x >= TetrisEnv.WIDTH \
+                    or y < 0 or y >= TetrisEnv.HEIGHT \
+                    or self.board[y][x] == TetrisEnv.EXISTING_BLOCK:
                 return True
         return False
 
@@ -170,37 +177,37 @@ class TetrisEnv:
             r -= 360
 
         self.current_rotation = r
-
+    
 
     def _add_piece_to_board(self, piece, pos):
         '''Place a piece in the board, returning the resulting board'''        
         board = [x[:] for x in self.board]
         for x, y in piece:
-            board[y + pos[1]][x + pos[0]] = Tetris.MAP_BLOCK
+            board[y + pos[1]][x + pos[0]] = TetrisEnv.EXISTING_BLOCK
         return board
 
 
     def _clear_lines(self, board):
         '''Clears completed lines in a board'''
         # Check if lines can be cleared
-        lines_to_clear = [index for index, row in enumerate(board) if sum(row) == Tetris.BOARD_WIDTH]
+        lines_to_clear = [index for index, row in enumerate(board) if sum(row) == TetrisEnv.WIDTH]
         if lines_to_clear:
             board = [row for index, row in enumerate(board) if index not in lines_to_clear]
             # Add new lines at the top
             for _ in lines_to_clear:
-                board.insert(0, [0 for _ in range(Tetris.BOARD_WIDTH)])
+                board.insert(0, [0 for _ in range(TetrisEnv.WIDTH)])
         return len(lines_to_clear), board
 
 
     def _number_of_holes(self, board):
-        '''Number of holes in the board (empty sqquare with at least one block above it)'''
+        '''Number of holes in the board (empty squares with at least one block above it)'''
         holes = 0
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] != Tetris.MAP_BLOCK:
+            while i < TetrisEnv.HEIGHT and col[i] != TetrisEnv.EXISTING_BLOCK:
                 i += 1
-            holes += len([x for x in col[i+1:] if x == Tetris.MAP_EMPTY])
+            holes += len([x for x in col[i+1:] if x == TetrisEnv.MAP_EMPTY])
 
         return holes
 
@@ -213,7 +220,7 @@ class TetrisEnv:
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] != Tetris.MAP_BLOCK:
+            while i < TetrisEnv.HEIGHT and col[i] != TetrisEnv.EXISTING_BLOCK:
                 i += 1
             min_ys.append(i)
         
@@ -229,13 +236,13 @@ class TetrisEnv:
         '''Sum and maximum height of the board'''
         sum_height = 0
         max_height = 0
-        min_height = Tetris.BOARD_HEIGHT
+        min_height = TetrisEnv.HEIGHT
 
         for col in zip(*board):
             i = 0
-            while i < Tetris.BOARD_HEIGHT and col[i] == Tetris.MAP_EMPTY:
+            while i < TetrisEnv.HEIGHT and col[i] == TetrisEnv.MAP_EMPTY:
                 i += 1
-            height = Tetris.BOARD_HEIGHT - i
+            height = TetrisEnv.HEIGHT - i
             sum_height += height
             if height > max_height:
                 max_height = height
@@ -248,9 +255,12 @@ class TetrisEnv:
     def _get_board_props(self, board):
         '''Get properties of the board'''
         lines, board = self._clear_lines(board)
+
+        # QUESTION: Additional Properties that can be left out 
         holes = self._number_of_holes(board)
         total_bumpiness, max_bumpiness = self._bumpiness(board)
         sum_height, max_height, min_height = self._height(board)
+
         return [lines, holes, total_bumpiness, sum_height]
 
 
@@ -268,12 +278,12 @@ class TetrisEnv:
 
         # For all rotations
         for rotation in rotations:
-            piece = Tetris.TETROMINOS[piece_id][rotation]
+            piece = TetrisEnv.TETRIMINOS[piece_id][rotation]
             min_x = min([p[0] for p in piece])
             max_x = max([p[0] for p in piece])
 
             # For all positions
-            for x in range(-min_x, Tetris.BOARD_WIDTH - max_x):
+            for x in range(-min_x, TetrisEnv.WIDTH - max_x):
                 pos = [x, 0]
 
                 # Drop piece
@@ -311,7 +321,7 @@ class TetrisEnv:
         # Update board and calculate score        
         self.board = self._add_piece_to_board(self._get_rotated_piece(), self.current_pos)
         lines_cleared, self.board = self._clear_lines(self.board)
-        score = 1 + (lines_cleared ** 2) * Tetris.BOARD_WIDTH
+        score = 1 + (lines_cleared ** 2) * TetrisEnv.WIDTH
         self.score += score
 
         # Start new round
@@ -320,41 +330,14 @@ class TetrisEnv:
             score -= 2
 
         return score, self.game_over
-
-    def step(self, action):
-        """
-        Accepts an action and computes state of environment after applying action
-        and returns the 4-tuple (observation,reward,done,info).
-        Once new state of environment is computed, can check whether it is a terminal 
-        state and we set done accordingly.
-        """
-
-        # Map the action (element of {0,1,2,3}) to the direction we walk in
-        direction = self._action_to_direction[action]
-        
-        # We use `np.clip` to make sure we don't leave the grid
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
-        )
-
-        # An episode is done if the agent has reached the target
-        terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else 0  # Binary sparse rewards
-        observation = self._get_obs()
-        info = self._get_info()
-
-        if self.render_mode == "human":
-            self._render_frame()
-
-        return observation, reward, terminated, False, info
     
     def render(self):
         '''Renders the current board'''
-        img = [TetrisEnv.COLORS[p] for row in self._get_complete_board() for p in row]
-        img = np.array(img).reshape(Tetris.BOARD_HEIGHT, Tetris.BOARD_WIDTH, 3).astype(np.uint8)
+        img = [TetrisEnv.COLOURS[p] for row in self._get_complete_board() for p in row]
+        img = np.array(img).reshape(TetrisEnv.HEIGHT, TetrisEnv.WIDTH, 3).astype(np.uint8)
         img = img[..., ::-1] # Convert RRG to BGR (used by cv2)
         img = Image.fromarray(img, 'RGB')
-        img = img.resize((TetrisEnv.BOARD_WIDTH * 25, TetrisEnv.BOARD_HEIGHT * 25))
+        img = img.resize((TetrisEnv.WIDTH * 25, TetrisEnv.HEIGHT * 25))
         img = np.array(img)
         cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
         cv2.imshow('image', np.array(img))
