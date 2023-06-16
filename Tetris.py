@@ -4,7 +4,7 @@ import gym
 from gym import spaces
 import pygame
 
-Tetriminos = {
+Tetraminos = {
     'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
     'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     'J': [(0, 0), (-1, 0), (0, -1), (0, -2)],
@@ -13,9 +13,9 @@ Tetriminos = {
     'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
     'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
 }
-Tetriminos_name = ['I', 'L', 'J', 'T', 'O', 'S', 'Z']
+Tetraminos_name = ['I', 'L', 'J', 'T', 'O', 'S', 'Z']
 
-class TetrisEnv:
+class TetrisEnvDepreciated:
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode = None, width, height):
