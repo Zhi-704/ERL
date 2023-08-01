@@ -1,3 +1,8 @@
-# ERL using SAC-discrete
+# ERL
 
-Implementation of the ERL framework by Khadka and Turner (2018) using SAC-discrete and a standard geneteic algorithm to test on the RL environment of Tetris.  
+Implementation of DQN and a standard genetic algorithm to test on the RL environment of Tetris.  
+
+TO DO:
+Heuristic function
+ERL framework by Khadka and Turner (2018)
+SAC-discrete
