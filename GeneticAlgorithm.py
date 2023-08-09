@@ -49,7 +49,7 @@ class Population:
     Breeds initial population of solutions
     '''
     for i in range(self.pop_size):
-      new_genome = Genome(170,64,64,40)
+      new_genome = Genome(122,64,64,32)
       self.population.append(new_genome)
 
   def parent_crossover(self,parent_a, parent_b):
@@ -57,7 +57,7 @@ class Population:
     Creates another genome based off two parents where their weighting and biases mixed between 
     the two in a one point crossover. Returns offspring.
     '''
-    offspring = Genome(170,64,64,40)
+    offspring = Genome(122,64,64,32)
     # Get weight and biases of parents hidden layer
     weights1, biases1 = parent_a.model.layers[1].get_weights()
     weights2, biases2 = parent_b.model.layers[1].get_weights()
@@ -163,20 +163,14 @@ class Population:
     # Sort population
     self.sort_population(fitness_scores)
     print("Sorting done")
-    for genome in self.population:
-      print(genome.fitness)
 
     # Choose elites with a percentage of how much you keep. Current 20%
     self.choose_elites(self.per_elites)
     print("Elites done")
-    for genome in self.elites:
-      print(genome.fitness)
 
     # Chooses 40% of genomes based using roulette wheel selection for crossover.
     selected_genomes = self.roulette_wheel_selection(fitness_scores)
     print("Roulette done")
-    for genome in selected_genomes:
-      print(genome.fitness)
 
     # Crossover selected genomes
     offspring_count = int(len(self.population) * (self.per_crossover/2))
@@ -195,16 +189,16 @@ class Population:
     for _ in range(mutate_count):
       index_to_mutate = np.random.choice(range(len(self.elites), len(self.population)))
       mutate_genome = self.population[index_to_mutate]
-      self.mutation(mutate_genome, 0.1)
+      self.mutation(mutate_genome, 0.001)
     print("Mutation done")
 
 
-    for genome in self.population:
-      print(genome.fitness)
+    # for genome in self.population:
+    #   print(genome.fitness)
 
     self.curr_gen += 1
 
-    return max_fit
+    return max_fit, min_fit, median_fit, avg_fit, std_fit, total_fit
 
 
   def fitness_stats(self):
@@ -234,7 +228,7 @@ class Population:
     for curr_genome in self.population:
       curr_genome.fitness = 0
       # Instantiate tetris environment using registry
-      env = jumanji.make('Tetris-v0', time_limit = 500)
+      env = jumanji.make('Tetris-v0', num_rows = 8, num_cols = 8, time_limit = 500)
       key = jax.random.PRNGKey(1)
       state, timestep = jax.jit(env.reset)(key)
 
@@ -274,7 +268,7 @@ class Genome:
     model.add(Dense(256, input_dim = input_size, activation='relu', kernel_initializer='he_uniform'))
     model.add(Dense(hidden_size1, activation='relu', use_bias=True, bias_initializer = bias_init, kernel_initializer= kernel_init))
     model.add(Dense(hidden_size2, activation = 'relu', use_bias=True, bias_initializer = bias_init, kernel_initializer= kernel_init))
-    # 40 actions so 40 different outputs
+    # 40 actions so 40 different outputs (32 now)
     model.add(Dense(output_size, activation='linear', kernel_initializer='he_uniform'))
     # opt = keras.optimizers.Adam(learning_rate=0.001)
     model.compile(loss='mse', optimizer = 'adam')
@@ -284,7 +278,7 @@ class Genome:
     '''
     Chooses action which has the highest output and is HOPEFULLY not illegal.
     '''
-    # Matches state into 170(for 10x10), array
+    # Matches state into 170(for 10x10), 122(8x8), array
     state_array = convert_state(state)
     # Convert to into tensorflow tensor
     state_input = tf.convert_to_tensor(state_array[None, :], dtype=tf.float32)
@@ -310,16 +304,21 @@ class Genome:
 
 
 # Population parameters(population, percentage of mutation, percentage of crossover, percentage of elites)
-pop = 30
-p_m = 0.4 # 12
-p_c = 0.4 # 12
-p_e = 0.2 # 6
+# pop = 8
+# p_m = 0.5 # 4
+# p_c = 0.25 # 2
+# p_e = 0.25 # 2
+
+pop = 20
+p_m = 0.4 # 8
+p_c = 0.4 # 8
+p_e = 0.2 # 4
 
 
 max_gen = 200
-interval = 10
+interval = 5
 Results = []
-Best_fit = -10000
+best_fitness = -10000
 
 # Specify the directory to save the files
 save_dir = "saved_models_and_results"
@@ -327,8 +326,7 @@ if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 
-tf.test.is_gpu_available()
-tf.config.list_physical_devices('GPU')
+print(tf.config.list_physical_devices('GPU'))
 
 print("Starting population")
 Big_poppa = Population(pop, p_m, p_c, p_e)
@@ -338,13 +336,13 @@ for generation in range(max_gen):
     print("Generation:", generation+1)
     
     Big_poppa.run_gen()
-    max_fit = Big_poppa.evolve()
-    Results.append(max_fit)
+    max_fit, min_fit, median_fit, avg_fit, std_fit, total_fit = Big_poppa.evolve()
+    Results.append((max_fit, min_fit, median_fit, avg_fit, std_fit, total_fit))
 
     # Update best genome
     if max_fit > best_fitness:
         best_fitness = max_fit
-        best_genome = Big_poppa.get_elites()[0]  # Assuming elites contain the best genomes
+        best_genome = Big_poppa.population[0]  # Assuming elites contain the best genomes
         
     
     print("Current population size:", len(Big_poppa.population))
@@ -356,9 +354,9 @@ for generation in range(max_gen):
         # Save results to a file (e.g., CSV)
         results_filename = os.path.join(save_dir, f"results_generation_{generation}.csv")
         with open(results_filename, "w") as results_file:
-            results_file.write("Generation,Max_Fitness\n")
-            for gen, fit in enumerate(Results, start=1):
-                results_file.write(f"{gen},{fit}\n")
+          results_file.write("Generation,Max_Fitness,Min_Fitness,Median_Fitness,Avg_Fitness,Std_Fitness,Total_Fitness\n")
+          for gen, (fit, min_fit, median_fit, avg_fit, std_fit, total_fit) in enumerate(Results, start=1):
+            results_file.write(f"{gen},{fit},{min_fit},{median_fit},{avg_fit},{std_fit},{total_fit}\n")
         # Save best genome to a file or data structure
         # Save best genome as an HDF5 model file
         best_genome_filename = os.path.join(save_dir, f"best_genome_generation_{generation}.h5")
